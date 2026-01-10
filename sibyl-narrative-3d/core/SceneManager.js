@@ -90,13 +90,13 @@ export class SceneManager {
   }
 
 update() {
-  // ===== BASE UPDATE (TIDAK DIUBAH) =====
+  // ===== BASE UPDATE =====
   this.cameraRig.update()
   this.world.update()
   this.ambience.update()
   this.core.update()
 
-  // ===== JOURNEY COMPLETE LOGIC (TIDAK DIUBAH) =====
+  // ===== JOURNEY COMPLETE =====
   if (
     this.journeyStarted &&
     !this.journeyFinished &&
@@ -113,7 +113,7 @@ update() {
     this.world.next()
   }
 
-  // ===== TRIGGER LEAVING OBSERVATORY (TIDAK DIUBAH) =====
+  // ===== TRIGGER LEAVING OBSERVATORY =====
   if (
     SCRIPT[this.index] === 'We now **leave the observatory**.' &&
     !this.observatoryClosed
@@ -121,45 +121,42 @@ update() {
     this.closeObservatoryAndIgniteCrucible()
   }
 
-  // ===== SEED UPDATE (NEW, SAFE) =====
-  if (this.seed) {
-    this.seed.update()
-  }
+  const seed = this.world.seed
+  const cloud = this.world.cloud
 
   // ===== PHASE: SEED SENDIRIAN =====
-  // Syarat:
-  // - observatory sudah ditutup
-  // - nodecloud sudah selesai collapse (strength >= 1)
-  // - belum masuk fase alone
   if (
+    seed &&
+    cloud &&
     this.observatoryClosed &&
     !this.seedEnteredAlone &&
-    this.world.cloud &&
-    this.world.cloud.collapseStrength >= 1
+    cloud.finished
   ) {
     this.seedEnteredAlone = true
-    this.seed.enterAlone()
+    seed.enterAlone()
   }
 
   // ===== PHASE: START HEATING =====
   if (
+    seed &&
     this.seedEnteredAlone &&
     !this.seedHeatingStarted &&
-    this.seed.isAloneComplete()
+    seed.isAloneComplete()
   ) {
     this.seedHeatingStarted = true
-    this.seed.startHeating()
+    seed.startHeating()
   }
 
   // ===== PHASE: CRUCIBLE CORE EMERGENCE =====
   if (
+    seed &&
     this.seedHeatingStarted &&
     !this.core.active &&
-    this.seed.timer > 1.8
+    seed.timer > 1.8
   ) {
-    this.world.cloud.group.visible = false
     this.core.activate()
   }
 }
+
 
 }

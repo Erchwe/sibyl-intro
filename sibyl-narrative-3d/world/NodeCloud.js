@@ -4,8 +4,16 @@ import { BrainShape } from './BrainShape.js'
 
 export class NodeCloud {
   constructor(scene) {
+    this.scene = scene
     this.group = new THREE.Group()
     scene.add(this.group)
+
+    /* =========================
+       STATE
+    ========================= */
+    this.mode = 'idle'
+    // idle | complexity | chaos | brain | collapse | absorbed
+    this.finished = false
 
     /* =========================
        NODES
@@ -14,10 +22,9 @@ export class NodeCloud {
     const geo = new THREE.SphereGeometry(1.5, 8, 8)
 
     for (let i = 0; i < 300; i++) {
-      // ⚠️ IMPORTANT: MATERIAL PER NODE (NO SHARED MATERIAL)
       const mat = new THREE.MeshBasicMaterial({
         color: 0x3cffb1,
-        transparent: false,
+        transparent: true,
         opacity: 1
       })
 
@@ -44,10 +51,9 @@ export class NodeCloud {
     /* =========================
        CONNECTIONS
     ========================= */
-    this.mode = 'idle' // idle | complexity | chaos | brain | collapse
     this.connectionsActive = false
-
     this.connections = []
+
     this.connectionMaterial = new THREE.LineBasicMaterial({
       color: 0x3cffb1,
       transparent: true,
@@ -72,10 +78,11 @@ export class NodeCloud {
     this.brainShape = new BrainShape(this.nodes.length)
 
     /* =========================
-       COLLAPSE / ATTRACTION STATE
+       COLLAPSE
     ========================= */
     this.seed = null
     this.collapseStrength = 0
+    this.absorbTimer = 0
 
     this.group.visible = false
   }
@@ -105,11 +112,7 @@ export class NodeCloud {
         const b = this.nodes[j].target.clone()
 
         if (a.distanceTo(b) < maxDist) {
-          this.connections.push({
-            a, b,
-            progress: 0,
-            speed: 0.02
-          })
+          this.connections.push({ a, b, progress: 0, speed: 0.02 })
           count++
         }
       }
@@ -163,14 +166,12 @@ export class NodeCloud {
   }
 
   /* =========================
-     SCENE MODES (UNCHANGED)
+     SCENE MODES
   ========================= */
   morphIn() {
     this.group.visible = true
     this.mode = 'complexity'
     this.connectionsActive = false
-
-    this.connections.forEach(c => (c.progress = 0))
 
     this.nodes.forEach((n, i) => {
       gsap.to(n.mesh.position, {
@@ -228,17 +229,26 @@ export class NodeCloud {
     })
   }
 
-  enterCollapse() {
-    this.mode = 'collapse'
-    this.connectionsActive = false
-    this.collapseStrength = 0
+enterCollapse() {
+  this.mode = 'collapse'
+  this.connectionsActive = false
+  this.collapseStrength = 0
+
+  // 🔴 KILL EDGES IMMEDIATELY (STRUCTURAL)
+  if (this.connectionMesh) {
+    this.group.remove(this.connectionMesh)
+    this.connectionGeometry.dispose()
+    this.connectionMaterial.dispose()
+    this.connectionMesh = null
   }
+}
+
 
   /* =========================
-     UPDATE LOOP
+     UPDATE
   ========================= */
   update() {
-    if (!this.group.visible) return
+    if (!this.group.visible || this.finished) return
 
     const t = performance.now() * 0.001
 
@@ -251,7 +261,7 @@ export class NodeCloud {
       })
     }
 
-    /* ========= COLLAPSE / ATTRACTION ========= */
+    /* ===== COLLAPSE ===== */
     if (this.mode === 'collapse' && this.seed) {
       this.collapseStrength = Math.min(
         1,
@@ -268,35 +278,49 @@ export class NodeCloud {
         n.velocity.add(dir.multiplyScalar(force))
         n.velocity.multiplyScalar(0.92)
         n.mesh.position.add(n.velocity)
-
-        const distToSeed =
-          n.mesh.position.distanceTo(this.seed.position)
-
-        if (distToSeed < 18) {
-          const t = THREE.MathUtils.clamp(
-            (18 - distToSeed) / 18,
-            0,
-            1
-          )
-
-          const s = THREE.MathUtils.lerp(1, 0.05, t)
-          n.mesh.scale.setScalar(s)
-
-          n.mesh.material.transparent = true
-          n.mesh.material.opacity =
-            THREE.MathUtils.lerp(1, 0, t)
-        }
       })
 
-      const gScale = THREE.MathUtils.lerp(
-        1,
-        0.85,
-        this.collapseStrength
-      )
-      this.group.scale.setScalar(gScale)
+      if (this.collapseStrength >= 1) {
+        this.mode = 'absorbed'
+        this.absorbTimer = 0
+      }
     }
 
-    if (!this.connectionsActive) return
+    /* ===== ABSORBED (FINAL VISUAL PHASE) ===== */
+    if (this.mode === 'absorbed') {
+    // 🔴 EDGES MUST DIE FIRST
+    if (this.connectionMesh) {
+        this.group.remove(this.connectionMesh)
+        this.connectionGeometry.dispose()
+        this.connectionMaterial.dispose()
+        this.connectionMesh = null
+    }
+
+    this.absorbTimer += 0.01
+    const t = Math.min(1, this.absorbTimer / 0.8)
+
+    this.nodes.forEach(n => {
+        n.mesh.position.lerp(this.seed.position, 0.25)
+        n.mesh.scale.lerp(
+        new THREE.Vector3(0.01, 0.01, 0.01),
+        0.3
+        )
+        n.mesh.material.opacity = THREE.MathUtils.lerp(1, 0, t)
+    })
+
+    if (t >= 1) {
+        this.finished = true
+    }
+    }
+
+
+    if (
+    !this.connectionsActive ||
+    !this.connectionMesh ||
+    this.mode === 'collapse' ||
+    this.mode === 'absorbed'
+    ) return
+
 
     let ptr = 0
     for (const c of this.connections) {
@@ -312,5 +336,23 @@ export class NodeCloud {
     }
 
     this.connectionGeometry.attributes.position.needsUpdate = true
+  }
+
+  /* =========================
+     FINAL DISPOSAL (WORLD ONLY)
+  ========================= */
+  finalize() {
+    this.scene.remove(this.group)
+
+    this.nodes.forEach(n => {
+      n.mesh.geometry.dispose()
+      n.mesh.material.dispose()
+    })
+
+    this.connectionGeometry.dispose()
+    this.connectionMaterial.dispose()
+
+    this.nodes.length = 0
+    this.connections.length = 0
   }
 }

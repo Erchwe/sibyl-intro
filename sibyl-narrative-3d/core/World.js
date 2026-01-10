@@ -4,20 +4,22 @@ import { NodeCloud } from '../world/NodeCloud.js'
 
 export class World {
   constructor(scene) {
+    this.scene = scene
     this.starfield = new StarField(scene)
     this.seed = new SeedNode(scene)
     this.cloud = new NodeCloud(scene)
 
     this.state = 'seed'
     this.isBusy = false
-
     this.onStateComplete = null
+
+    // link seed → cloud
+    this.cloud.setSeed(this.seed.mesh)
   }
 
   next() {
     if (this.isBusy) return
 
-    /* ===== SEED → COMPLEXITY ===== */
     if (this.state === 'seed') {
       this.isBusy = true
       this.seed.morphOut()
@@ -30,12 +32,10 @@ export class World {
       }, 1800)
     }
 
-    /* ===== COMPLEXITY → CHAOS ===== */
     else if (this.state === 'complexity') {
       this.isBusy = true
       this.cloud.enterChaos()
 
-      // chaos needs time to "form"
       setTimeout(() => {
         this.state = 'chaos'
         this.isBusy = false
@@ -43,23 +43,38 @@ export class World {
       }, 1200)
     }
 
-    /* ===== CHAOS → BRAIN ===== */
     else if (this.state === 'chaos') {
       this.isBusy = true
       this.cloud.enterBrain()
 
-      // brain formation duration
       setTimeout(() => {
         this.state = 'brain'
         this.isBusy = false
         this.onStateComplete?.()
       }, 2600)
     }
+
+    else if (this.state === 'brain') {
+      this.isBusy = true
+      this.cloud.enterCollapse()
+
+      this.state = 'collapse'
+      this.isBusy = false
+    }
   }
 
   update() {
     this.starfield.update()
     this.seed.update()
-    this.cloud.update()
+
+    if (this.cloud && !this.cloud.finished) {
+      this.cloud.update()
+    }
+
+    // FINAL LIFECYCLE TERMINATION
+    if (this.cloud && this.cloud.finished) {
+      this.cloud.finalize()
+      this.cloud = null
+    }
   }
 }
