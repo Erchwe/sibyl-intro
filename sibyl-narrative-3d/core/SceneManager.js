@@ -95,6 +95,8 @@ update() {
   this.world.update()
   this.ambience.update()
   this.core.update()
+  this.ambience.update(this.core.group.position)
+
 
   // ===== JOURNEY COMPLETE =====
   if (

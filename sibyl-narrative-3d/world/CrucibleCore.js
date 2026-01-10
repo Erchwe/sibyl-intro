@@ -78,13 +78,16 @@ export class CrucibleCore {
   update() {
     if (!this.active) return
 
-    this.time += 0.01
+this.time += 0.01
 
-    this.core.rotation.y += 0.002
-    this.core.rotation.x += 0.001
+// rotation feels heavier
+this.core.rotation.y += 0.0006
+this.core.rotation.x += 0.0003
 
-    const pulse = 0.5 + Math.sin(this.time * 2) * 0.5
-    this.glow.material.opacity += ((0.25 * pulse) - this.glow.material.opacity) * 0.05
-    this.light.intensity += ((2.2 * pulse) - this.light.intensity) * 0.04
+// non-periodic pulse
+const pulse = 0.6 + Math.sin(this.time * 1.3) * Math.sin(this.time * 0.7)
+this.glow.material.opacity += ((0.25 * pulse) - this.glow.material.opacity) * 0.04
+this.light.intensity += ((2.0 * pulse) - this.light.intensity) * 0.03
+
   }
 }

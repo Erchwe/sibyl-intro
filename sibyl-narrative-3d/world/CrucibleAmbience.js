@@ -62,19 +62,41 @@ export class CrucibleAmbience {
     this.active = true
   }
 
-  update() {
-    if (!this.active) return
+update(corePosition) {
+  if (!this.active) return
 
-    this.time += 0.01
+  this.time += 0.01
 
-    // fog pressure
-    this.fog.material.opacity += (0.12 - this.fog.material.opacity) * 0.03
+  // fog pressure
+  this.fog.material.opacity += (0.12 - this.fog.material.opacity) * 0.03
 
-    // noise emergence
-    this.noise.material.opacity += (0.25 - this.noise.material.opacity) * 0.04
+  // noise emergence
+  this.noise.material.opacity += (0.25 - this.noise.material.opacity) * 0.04
 
-    // subtle turbulence
-    this.noise.rotation.y += 0.0008
-    this.noise.rotation.x += 0.0004
+  // 🔥 NEW: SLOW INFALL TOWARD CORE
+  if (corePosition) {
+    const positions = this.noise.geometry.attributes.position.array
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const p = new THREE.Vector3(
+        positions[i],
+        positions[i + 1],
+        positions[i + 2]
+      )
+
+      const dir = corePosition.clone().sub(p).multiplyScalar(0.002)
+      p.add(dir)
+
+      positions[i] = p.x
+      positions[i + 1] = p.y
+      positions[i + 2] = p.z
+    }
+
+    this.noise.geometry.attributes.position.needsUpdate = true
   }
+
+  this.noise.rotation.y += 0.0006
+  this.noise.rotation.x += 0.0003
+}
+
 }
