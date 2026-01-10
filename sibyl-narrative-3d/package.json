@@ -1,0 +1,21 @@
+{
+  "name": "sibyl-narrative-3d",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "gsap": "^3.14.2",
+    "three": "^0.182.0",
+    "vite": "^7.3.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.182.0"
+  }
+}
