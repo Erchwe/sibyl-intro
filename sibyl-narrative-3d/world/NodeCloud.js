@@ -29,14 +29,15 @@ export class NodeCloud {
         mesh,
         target,
         base: target.clone(),
-        chaosSeed: Math.random() * 10
+        chaosSeed: Math.random() * 10,
+        velocity: new THREE.Vector3()
       })
     }
 
     /* =========================
        CONNECTIONS
     ========================= */
-    this.mode = 'idle'              // idle | complexity | chaos | brain
+    this.mode = 'idle' // idle | complexity | chaos | brain | collapse
     this.connectionsActive = false
 
     this.connections = []
@@ -63,13 +64,25 @@ export class NodeCloud {
     ========================= */
     this.brainShape = new BrainShape(this.nodes.length)
 
+    /* =========================
+       COLLAPSE STATE
+    ========================= */
+    this.seed = null
+    this.collapseStrength = 0
+
     this.group.visible = false
+  }
+
+  /* =========================
+     EXTERNAL LINK
+  ========================= */
+  setSeed(seedMesh) {
+    this.seed = seedMesh
   }
 
   /* =========================
      CONNECTION BUILDERS
   ========================= */
-
   buildComplexityConnections() {
     this.connections = []
 
@@ -89,8 +102,7 @@ export class NodeCloud {
             a, b,
             progress: 0,
             speed: 0.02,
-            breakChance: Math.random(),
-            flickerSpeed: 0.6 + Math.random()
+            breakChance: Math.random()
           })
           count++
         }
@@ -100,69 +112,39 @@ export class NodeCloud {
     this.rebuildGeometry()
   }
 
-buildBrainConnections() {
-  this.connections = []
+  buildBrainConnections() {
+    this.connections = []
 
-  const points = this.nodes.map((_, i) =>
-    this.brainShape.getPoint(i)
-  )
+    const points = this.nodes.map((_, i) =>
+      this.brainShape.getPoint(i)
+    )
 
-  const k = 3               // jumlah tetangga (SEGITIGA)
-  const maxDist = 38
+    const k = 3
+    const maxDist = 38
 
-  // untuk setiap node
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i]
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i]
 
-    // cari k tetangga terdekat
-    const neighbors = points
-      .map((p, j) => ({
-        index: j,
-        dist: a.distanceTo(p)
-      }))
-      .filter(n => n.index !== i && n.dist < maxDist)
-      .sort((x, y) => x.dist - y.dist)
-      .slice(0, k)
+      const neighbors = points
+        .map((p, j) => ({ index: j, dist: a.distanceTo(p) }))
+        .filter(n => n.index !== i && n.dist < maxDist)
+        .sort((x, y) => x.dist - y.dist)
+        .slice(0, k)
 
-    // buat segitiga: a → b → c
-    for (let m = 0; m < neighbors.length; m++) {
-      for (let n = m + 1; n < neighbors.length; n++) {
-        const b = points[neighbors[m].index]
-        const c = points[neighbors[n].index]
+      for (let m = 0; m < neighbors.length; m++) {
+        for (let n = m + 1; n < neighbors.length; n++) {
+          const b = points[neighbors[m].index]
+          const c = points[neighbors[n].index]
 
-        // edge AB
-        this.connections.push({
-          a,
-          b,
-          progress: 0,
-          speed: 0.06,
-          breakChance: 0
-        })
-
-        // edge AC
-        this.connections.push({
-          a,
-          b: c,
-          progress: 0,
-          speed: 0.06,
-          breakChance: 0
-        })
-
-        // edge BC (penutup segitiga)
-        this.connections.push({
-          a: b,
-          b: c,
-          progress: 0,
-          speed: 0.06,
-          breakChance: 0
-        })
+          this.connections.push({ a, b, progress: 0, speed: 0.06 })
+          this.connections.push({ a, b: c, progress: 0, speed: 0.06 })
+          this.connections.push({ a: b, b: c, progress: 0, speed: 0.06 })
+        }
       }
     }
+
+    this.rebuildGeometry()
   }
-
-  this.rebuildGeometry()
-}
-
 
   rebuildGeometry() {
     this.connectionPositions = new Float32Array(
@@ -177,7 +159,6 @@ buildBrainConnections() {
   /* =========================
      SCENE MODES
   ========================= */
-
   morphIn() {
     this.group.visible = true
     this.mode = 'complexity'
@@ -214,13 +195,11 @@ buildBrainConnections() {
     this.mode = 'brain'
     this.connectionsActive = false
 
-    // fade out chaos graph
     gsap.to(this.connectionMaterial, {
       opacity: 0,
       duration: 0.6
     })
 
-    // move nodes
     this.nodes.forEach((n, i) => {
       const p = this.brainShape.getPoint(i)
       gsap.to(n.mesh.position, {
@@ -233,7 +212,6 @@ buildBrainConnections() {
       n.base.copy(p)
     })
 
-    // rebuild clean brain graph
     gsap.delayedCall(1.9, () => {
       this.buildBrainConnections()
       this.connectionsActive = true
@@ -244,10 +222,15 @@ buildBrainConnections() {
     })
   }
 
+  enterCollapse() {
+    this.mode = 'collapse'
+    this.connectionsActive = false
+    this.collapseStrength = 0
+  }
+
   /* =========================
      UPDATE LOOP
   ========================= */
-
   update() {
     if (!this.group.visible) return
 
@@ -262,24 +245,39 @@ buildBrainConnections() {
       })
     }
 
+    if (this.mode === 'collapse' && this.seed) {
+      this.collapseStrength = Math.min(1, this.collapseStrength + 0.004)
+
+      this.nodes.forEach(n => {
+        const dir = this.seed.position.clone().sub(n.mesh.position)
+        const dist = dir.length() + 0.0001
+        dir.normalize()
+
+        const force = 0.15 + this.collapseStrength * 1.2
+        n.velocity.add(dir.multiplyScalar(force))
+        n.velocity.multiplyScalar(0.88)
+        n.mesh.position.add(n.velocity)
+
+        if (this.collapseStrength > 0.7) {
+          const s = THREE.MathUtils.lerp(
+            1,
+            0.25,
+            (this.collapseStrength - 0.7) / 0.3
+          )
+          n.mesh.scale.setScalar(s)
+        }
+      })
+
+      const gScale = THREE.MathUtils.lerp(1, 0.55, this.collapseStrength)
+      this.group.scale.setScalar(gScale)
+    }
+
     if (!this.connectionsActive) return
 
     let ptr = 0
-
     for (const c of this.connections) {
-      if (this.mode === 'complexity') {
-        c.progress = Math.min(1, c.progress + c.speed)
-      } else if (this.mode === 'chaos') {
-        c.progress += c.breakChance > 0.8 ? -0.03 : 0.01
-      } else if (this.mode === 'brain') {
-        c.progress = Math.min(1, c.progress + 0.05)
-      }
-
-      c.progress = THREE.MathUtils.clamp(c.progress, 0, 1)
-
-      const end = new THREE.Vector3().lerpVectors(
-        c.a, c.b, c.progress
-      )
+      c.progress = Math.min(1, c.progress + c.speed)
+      const end = new THREE.Vector3().lerpVectors(c.a, c.b, c.progress)
 
       this.connectionPositions[ptr++] = c.a.x
       this.connectionPositions[ptr++] = c.a.y

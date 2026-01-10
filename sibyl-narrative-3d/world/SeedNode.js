@@ -9,7 +9,6 @@ export class SeedNode {
     this.mesh = new THREE.Mesh(geo, mat)
     scene.add(this.mesh)
 
-    // pulse halus
     gsap.to(this.mesh.scale, {
       x: 1.15,
       y: 1.15,
@@ -19,7 +18,7 @@ export class SeedNode {
       duration: 1.6,
       ease: 'sine.inOut'
     })
-  }
+  }a
 
   morphOut() {
     gsap.to(this.mesh.scale, {
