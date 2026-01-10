@@ -24,6 +24,9 @@ export class SceneManager {
     this.narration = new Narration()
     this.ambience = new CrucibleAmbience(scene)
     this.core = new CrucibleCore(scene)
+    this.seedEnteredAlone = false
+    this.seedHeatingStarted = false
+
 
     this.index = 0
     this.pendingAdvance = false
@@ -82,46 +85,81 @@ export class SceneManager {
       ease: 'power2.inOut'
     })
 
-    gsap.to(this.world.cloud.group, {
-      opacity: 0,
-      duration: 1.8,
-      onComplete: () => {
-        this.world.cloud.group.visible = false
-      }
-    })
-
     this.ambience.activate()
     this.core.activate()
   }
 
-  update() {
-    this.cameraRig.update()
-    this.world.update()
-    this.ambience.update()
-    this.core.update()
+update() {
+  // ===== BASE UPDATE (TIDAK DIUBAH) =====
+  this.cameraRig.update()
+  this.world.update()
+  this.ambience.update()
+  this.core.update()
 
-    if (
-      this.journeyStarted &&
-      !this.journeyFinished &&
-      this.cameraRig.isJourneyComplete()
-    ) {
-      this.journeyFinished = true
+  // ===== JOURNEY COMPLETE LOGIC (TIDAK DIUBAH) =====
+  if (
+    this.journeyStarted &&
+    !this.journeyFinished &&
+    this.cameraRig.isJourneyComplete()
+  ) {
+    this.journeyFinished = true
 
-      if (!this.scriptAdvancedAfterJourney) {
-        this.scriptAdvancedAfterJourney = true
-        this.advanceNarration()
-      }
-
-      this.pendingAdvance = true
-      this.world.next()
+    if (!this.scriptAdvancedAfterJourney) {
+      this.scriptAdvancedAfterJourney = true
+      this.advanceNarration()
     }
 
-    // Trigger proper handoff
-    if (
-      SCRIPT[this.index] === 'We now **leave the observatory**.' &&
-      !this.observatoryClosed
-    ) {
-      this.closeObservatoryAndIgniteCrucible()
-    }
+    this.pendingAdvance = true
+    this.world.next()
   }
+
+  // ===== TRIGGER LEAVING OBSERVATORY (TIDAK DIUBAH) =====
+  if (
+    SCRIPT[this.index] === 'We now **leave the observatory**.' &&
+    !this.observatoryClosed
+  ) {
+    this.closeObservatoryAndIgniteCrucible()
+  }
+
+  // ===== SEED UPDATE (NEW, SAFE) =====
+  if (this.seed) {
+    this.seed.update()
+  }
+
+  // ===== PHASE: SEED SENDIRIAN =====
+  // Syarat:
+  // - observatory sudah ditutup
+  // - nodecloud sudah selesai collapse (strength >= 1)
+  // - belum masuk fase alone
+  if (
+    this.observatoryClosed &&
+    !this.seedEnteredAlone &&
+    this.world.cloud &&
+    this.world.cloud.collapseStrength >= 1
+  ) {
+    this.seedEnteredAlone = true
+    this.seed.enterAlone()
+  }
+
+  // ===== PHASE: START HEATING =====
+  if (
+    this.seedEnteredAlone &&
+    !this.seedHeatingStarted &&
+    this.seed.isAloneComplete()
+  ) {
+    this.seedHeatingStarted = true
+    this.seed.startHeating()
+  }
+
+  // ===== PHASE: CRUCIBLE CORE EMERGENCE =====
+  if (
+    this.seedHeatingStarted &&
+    !this.core.active &&
+    this.seed.timer > 1.8
+  ) {
+    this.world.cloud.group.visible = false
+    this.core.activate()
+  }
+}
+
 }

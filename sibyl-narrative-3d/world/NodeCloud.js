@@ -12,9 +12,15 @@ export class NodeCloud {
     ========================= */
     this.nodes = []
     const geo = new THREE.SphereGeometry(1.5, 8, 8)
-    const mat = new THREE.MeshBasicMaterial({ color: 0x3cffb1 })
 
     for (let i = 0; i < 300; i++) {
+      // ⚠️ IMPORTANT: MATERIAL PER NODE (NO SHARED MATERIAL)
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x3cffb1,
+        transparent: false,
+        opacity: 1
+      })
+
       const target = new THREE.Vector3(
         THREE.MathUtils.randFloatSpread(180),
         THREE.MathUtils.randFloatSpread(120),
@@ -30,7 +36,8 @@ export class NodeCloud {
         target,
         base: target.clone(),
         chaosSeed: Math.random() * 10,
-        velocity: new THREE.Vector3()
+        velocity: new THREE.Vector3(),
+        inertia: THREE.MathUtils.randFloat(0.85, 1.15)
       })
     }
 
@@ -65,7 +72,7 @@ export class NodeCloud {
     this.brainShape = new BrainShape(this.nodes.length)
 
     /* =========================
-       COLLAPSE STATE
+       COLLAPSE / ATTRACTION STATE
     ========================= */
     this.seed = null
     this.collapseStrength = 0
@@ -101,8 +108,7 @@ export class NodeCloud {
           this.connections.push({
             a, b,
             progress: 0,
-            speed: 0.02,
-            breakChance: Math.random()
+            speed: 0.02
           })
           count++
         }
@@ -157,7 +163,7 @@ export class NodeCloud {
   }
 
   /* =========================
-     SCENE MODES
+     SCENE MODES (UNCHANGED)
   ========================= */
   morphIn() {
     this.group.visible = true
@@ -245,30 +251,48 @@ export class NodeCloud {
       })
     }
 
+    /* ========= COLLAPSE / ATTRACTION ========= */
     if (this.mode === 'collapse' && this.seed) {
-      this.collapseStrength = Math.min(1, this.collapseStrength + 0.004)
+      this.collapseStrength = Math.min(
+        1,
+        this.collapseStrength + 0.0015
+      )
 
       this.nodes.forEach(n => {
         const dir = this.seed.position.clone().sub(n.mesh.position)
-        const dist = dir.length() + 0.0001
         dir.normalize()
 
-        const force = 0.15 + this.collapseStrength * 1.2
+        const force =
+          (0.05 + this.collapseStrength * 0.6) / n.inertia
+
         n.velocity.add(dir.multiplyScalar(force))
-        n.velocity.multiplyScalar(0.88)
+        n.velocity.multiplyScalar(0.92)
         n.mesh.position.add(n.velocity)
 
-        if (this.collapseStrength > 0.7) {
-          const s = THREE.MathUtils.lerp(
-            1,
-            0.25,
-            (this.collapseStrength - 0.7) / 0.3
+        const distToSeed =
+          n.mesh.position.distanceTo(this.seed.position)
+
+        if (distToSeed < 18) {
+          const t = THREE.MathUtils.clamp(
+            (18 - distToSeed) / 18,
+            0,
+            1
           )
+
+          const s = THREE.MathUtils.lerp(1, 0.05, t)
           n.mesh.scale.setScalar(s)
+
+          n.mesh.material.transparent = true
+          n.mesh.material.opacity =
+            THREE.MathUtils.lerp(1, 0, t)
         }
       })
 
-      const gScale = THREE.MathUtils.lerp(1, 0.55, this.collapseStrength)
+      const gScale = THREE.MathUtils.lerp(
+        1,
+        0.85,
+        this.collapseStrength
+      )
       this.group.scale.setScalar(gScale)
     }
 
