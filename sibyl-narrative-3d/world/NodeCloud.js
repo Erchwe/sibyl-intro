@@ -100,34 +100,69 @@ export class NodeCloud {
     this.rebuildGeometry()
   }
 
-  buildBrainConnections() {
-    this.connections = []
+buildBrainConnections() {
+  this.connections = []
 
-    const maxDist = 34
-    const maxPerNode = 1
+  const points = this.nodes.map((_, i) =>
+    this.brainShape.getPoint(i)
+  )
 
-    for (let i = 0; i < this.nodes.length; i++) {
-      let count = 0
-      const a = this.brainShape.getPoint(i)
+  const k = 3               // jumlah tetangga (SEGITIGA)
+  const maxDist = 38
 
-      for (let j = i + 1; j < this.nodes.length; j++) {
-        if (count >= maxPerNode) break
-        const b = this.brainShape.getPoint(j)
+  // untuk setiap node
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
 
-        if (a.distanceTo(b) < maxDist) {
-          this.connections.push({
-            a, b,
-            progress: 0,
-            speed: 0.05,
-            breakChance: 0
-          })
-          count++
-        }
+    // cari k tetangga terdekat
+    const neighbors = points
+      .map((p, j) => ({
+        index: j,
+        dist: a.distanceTo(p)
+      }))
+      .filter(n => n.index !== i && n.dist < maxDist)
+      .sort((x, y) => x.dist - y.dist)
+      .slice(0, k)
+
+    // buat segitiga: a → b → c
+    for (let m = 0; m < neighbors.length; m++) {
+      for (let n = m + 1; n < neighbors.length; n++) {
+        const b = points[neighbors[m].index]
+        const c = points[neighbors[n].index]
+
+        // edge AB
+        this.connections.push({
+          a,
+          b,
+          progress: 0,
+          speed: 0.06,
+          breakChance: 0
+        })
+
+        // edge AC
+        this.connections.push({
+          a,
+          b: c,
+          progress: 0,
+          speed: 0.06,
+          breakChance: 0
+        })
+
+        // edge BC (penutup segitiga)
+        this.connections.push({
+          a: b,
+          b: c,
+          progress: 0,
+          speed: 0.06,
+          breakChance: 0
+        })
       }
     }
-
-    this.rebuildGeometry()
   }
+
+  this.rebuildGeometry()
+}
+
 
   rebuildGeometry() {
     this.connectionPositions = new Float32Array(

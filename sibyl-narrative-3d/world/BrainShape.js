@@ -1,37 +1,33 @@
 import * as THREE from 'three'
 
 export class BrainShape {
-  constructor(count = 300) {
+  constructor(count = 300, radius = 70) {
     this.points = []
 
-    const layers = [
-      { y: 32, r: 52 },
-      { y: 18, r: 62 },
-      { y: 0,  r: 70 },
-      { y: -18, r: 60 },
-      { y: -32, r: 48 }
-    ]
+    // Fibonacci sphere (uniform, solid-looking)
+    const offset = 2 / count
+    const increment = Math.PI * (3 - Math.sqrt(5)) // golden angle
 
-    let i = 0
-    while (this.points.length < count) {
-      const layer = layers[i % layers.length]
-      const side = i % 2 === 0 ? -1 : 1
+    for (let i = 0; i < count; i++) {
+      const y = ((i * offset) - 1) + (offset / 2)
+      const r = Math.sqrt(1 - y * y)
 
-      const angle = (i / count) * Math.PI * 6
-      const wobble = Math.sin(i * 0.4) * 5
+      const phi = i * increment
+
+      const x = Math.cos(phi) * r
+      const z = Math.sin(phi) * r
 
       this.points.push(
         new THREE.Vector3(
-          Math.cos(angle) * layer.r + side * 18,
-          layer.y + wobble,
-          Math.sin(angle) * layer.r
+          x * radius,
+          y * radius,
+          z * radius
         )
       )
-      i++
     }
   }
 
   getPoint(i) {
-    return this.points[i % this.points.length]
+    return this.points[i]
   }
 }
