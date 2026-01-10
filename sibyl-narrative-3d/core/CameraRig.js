@@ -4,7 +4,7 @@ export class CameraRig {
   constructor(camera) {
     this.camera = camera
 
-    this.target = new Vector3(0, 15, 0)
+    this.target = new Vector3(0, -20, 0)
 
     this.radius = 300            // default
     this.theta = 0

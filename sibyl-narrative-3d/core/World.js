@@ -9,31 +9,51 @@ export class World {
     this.cloud = new NodeCloud(scene)
 
     this.state = 'seed'
-    this.isTransitioning = false
+    this.isBusy = false
+
+    this.onStateComplete = null
   }
 
   next() {
-    if (this.isTransitioning) return
+    if (this.isBusy) return
 
+    /* ===== SEED → COMPLEXITY ===== */
     if (this.state === 'seed') {
-      this.isTransitioning = true
+      this.isBusy = true
       this.seed.morphOut()
       this.cloud.morphIn()
 
       setTimeout(() => {
         this.state = 'complexity'
-        this.isTransitioning = false
+        this.isBusy = false
+        this.onStateComplete?.()
       }, 1800)
     }
 
+    /* ===== COMPLEXITY → CHAOS ===== */
     else if (this.state === 'complexity') {
-      this.state = 'chaos'
+      this.isBusy = true
       this.cloud.enterChaos()
+
+      // chaos needs time to "form"
+      setTimeout(() => {
+        this.state = 'chaos'
+        this.isBusy = false
+        this.onStateComplete?.()
+      }, 1200)
     }
 
+    /* ===== CHAOS → BRAIN ===== */
     else if (this.state === 'chaos') {
-      this.state = 'brain'
+      this.isBusy = true
       this.cloud.enterBrain()
+
+      // brain formation duration
+      setTimeout(() => {
+        this.state = 'brain'
+        this.isBusy = false
+        this.onStateComplete?.()
+      }, 2600)
     }
   }
 
