@@ -40,7 +40,8 @@
     0 0 24px rgba(60, 255, 177, 0.18);
 }
 
-/* Branding Container */
+/* CONTAINER BRANDING */
+/* CONTAINER BRANDING */
 #sibyl-branding {
   position: fixed;
   top: 50%;
@@ -48,32 +49,49 @@
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
+  justify-content: center;
   opacity: 0;
   pointer-events: none;
-  font-family: 'Orbitron', sans-serif; /* Font berkarakter futuristik/militer */
   z-index: 10000;
 }
 
-/* Logo Placeholder (Sesuaikan dengan path logo Anda) */
+/* LOGO SIBYL */
 .sibyl-logo-img {
-  width: 60px;
+  width: 70px;
   height: auto;
-  margin-right: 20px;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 148, 0.5));
+  margin-right: 25px;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 148, 0.3));
 }
 
-/* Text Styling */
-.text-white {
-  color: #ffffff;
-  font-size: 2.5rem;
+/* WRAPPER TEKS */
+.sibyl-text-wrapper {
+  display: flex;
+  font-size: 2.8rem;
   font-weight: 800;
-  letter-spacing: 4px;
+  letter-spacing: -0.02em;
+}
+
+.text-white {
+  font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .glow-text-green {
+  font-family: 'JetBrains Mono', monospace;
   color: rgb(0, 255, 148);
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: 4px;
-  text-shadow: 0 0 15px rgba(0, 255, 148, 0.7), 0 0 30px rgba(0, 255, 148, 0.3);
+  /* Spesifikasi Glow User */
+  text-shadow: 0 0 20px rgba(0, 255, 148, 0.6); 
+  font-weight: 700;
+}
+/* ANIMASI DENYUT JANTUNG SISTEM */
+@keyframes pulse-glow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(0, 255, 148, 0.8), 0 0 40px rgba(0, 255, 148, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 35px rgba(0, 255, 148, 1), 0 0 60px rgba(0, 255, 148, 0.4);
+    transform: scale(1.02);
+  }
 }

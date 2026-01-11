@@ -9,6 +9,9 @@ import { ConclusionCrystal } from '../world/ConclusionCrystal.js'
 import { AlexandriaUplink } from '../world/AlexandriaUplink.js'
 import { AlexandriaEnvironment } from '../world/AlexandriaEnvironment.js'
 
+// 🔴 FIX LOGO: Menggunakan import karena file ada di folder yang sama
+import logoImg from './logo.png'
+
 const SCRIPT = [
   'Every system begins with a **single assumption**.',
   'Trillions of **interactions** shape our world every second.',
@@ -47,6 +50,7 @@ export class SceneManager {
     this.seedEnteredAlone = false
     this.seedHeatingStarted = false
     this.isForging = false
+    this.forgingTriggered = false
     this.isConcluded = false
     this.uplinkStarted = false
     this.isAlexandriaRevealed = false
@@ -65,20 +69,18 @@ export class SceneManager {
     this.flash.style.position = 'fixed'
     this.flash.style.top = '0'; this.flash.style.left = '0'
     this.flash.style.width = '100vw'; this.flash.style.height = '100vh'
-    this.flash.style.backgroundColor = 'white'
-    this.flash.style.opacity = '0'; this.flash.style.pointerEvents = 'none'
-    this.flash.style.zIndex = '9999'
+    this.flash.style.backgroundColor = 'white'; this.flash.style.opacity = '0'
+    this.flash.style.pointerEvents = 'none'; this.flash.style.zIndex = '9999'
     document.body.appendChild(this.flash)
   }
 
   createBranding() {
     this.brandContainer = document.createElement('div')
     this.brandContainer.id = 'sibyl-branding'
+    // 🔴 FIX: Memasukkan logo hasil import ke src
     this.brandContainer.innerHTML = `
-      <img src="/logo-sibyl.svg" class="sibyl-logo-img" alt="Logo">
-      <div class="sibyl-text-wrapper">
-        <span class="text-white">SIBYL</span><span class="glow-text-green">LABS</span>
-      </div>
+      <img src="${logoImg}" class="sibyl-logo-img" alt="Sibyl Logo">
+      <div class="sibyl-text-wrapper"><span class="text-white">SIBYL</span><span class="glow-text-green">LABS</span></div>
     `
     document.body.appendChild(this.brandContainer)
   }
@@ -87,55 +89,49 @@ export class SceneManager {
     if (this.lockTimer) clearTimeout(this.lockTimer)
     this.isInputLocked = true
     this.lockTimer = setTimeout(() => {
-      this.isInputLocked = false
-      this.lockTimer = null
+      this.isInputLocked = false; this.lockTimer = null
     }, duration)
   }
 
   initInputs() {
     window.addEventListener('mousedown', () => {
-      // 1. GUARD PRIORITAS: Jangan pernah proses klik jika input sedang dikunci
       if (this.isInputLocked) return
 
-      const currentText = SCRIPT[this.index]
-
-      // 2. LOGIKA KESIMPULAN (Fase setelah Forge selesai)
+      // 🔴 FIX TRANSITION: Gunakan index sebagai pemicu jump yang lebih pasti
       if (this.isConcluded) {
+        if (this.index === SCRIPT.length - 1 && !this.brandingShown) {
+          this.lockInput(10000); this.showFinalBranding(); return
+        }
+
         if (this.index < SCRIPT.length - 1) {
-          // Anti-spam dinamis untuk transisi Alexandria
-          const lockTime = SCRIPT[this.index + 1].includes('Feeding') || 
-                           SCRIPT[this.index + 1].includes('Indestructible') ? 4000 : 1500;
+          const nextIndex = this.index + 1
+          
+          // Trigger Great Jump saat berpindah ke Alexandria (Index 9)
+          if (nextIndex >= 9 && !this.isAlexandriaRevealed) {
+            this.triggerGreatJump()
+          }
+
+          const lockTime = SCRIPT[nextIndex].includes('Feeding') || 
+                           SCRIPT[nextIndex].includes('Indestructible') ? 4000 : 1200;
           
           this.lockInput(lockTime)
           this.advanceNarration()
           
-          if (SCRIPT[this.index].includes('Feeding the **Immortal Memory**')) this.triggerAlexandriaUplink()
-          if (SCRIPT[this.index].includes('Indestructible Civilization')) this.triggerGreatJump()
-        } else if (!this.brandingShown) {
-          this.lockInput(5000)
-          this.showFinalBranding()
+          if (SCRIPT[this.index].includes('Feeding the **Immortal Memory**')) {
+            this.triggerAlexandriaUplink()
+          }
         }
         return
       }
 
-      // 3. AUTOMATED PHASE GUARD (Mencegah klik saat proses Crucible berjalan)
-      // Hanya izinkan klik pada 10,000 agents JIKA proses Forge (isConcluded) sudah selesai.
-      if (currentText.includes('In the **Crucible**') || currentText.includes('10,000 agents')) {
-        return 
-      }
-
-      // 4. OBSERVATORY FLOW
+      if (SCRIPT[this.index].includes('In the **Crucible**') || SCRIPT[this.index].includes('10,000 agents')) return 
       if (this.world.isBusy || this.isForging) return
       
       if (this.world.state === 'brain' && !this.journeyStarted) {
-        this.lockInput(1500)
-        this.startJourney()
-        return
+        this.lockInput(1500); this.startJourney(); return
       }
 
-      this.lockInput(1000)
-      this.world.next()
-      this.advanceNarration()
+      this.lockInput(1000); this.world.next(); this.advanceNarration()
     })
   }
 
@@ -154,8 +150,7 @@ export class SceneManager {
 
   triggerAlexandriaUplink() {
     if (this.uplinkStarted) return
-    this.uplinkStarted = true
-    this.lockInput(8000)
+    this.uplinkStarted = true; this.lockInput(8000)
     
     this.uplink.ignite()
     if (this.core) {
@@ -174,15 +169,21 @@ export class SceneManager {
     gsap.to(this.flash, {
       opacity: 1, duration: 1.5,
       onComplete: () => {
+        // Cleanup Crucible
         if (this.core) this.scene.remove(this.core.group)
         if (this.conclusion) this.scene.remove(this.conclusion.group)
         if (this.uplink) this.scene.remove(this.uplink.group)
         if (this.ambience) this.scene.remove(this.ambience.group)
+        
+        // Setup Alexandria
         this.scene.background = new THREE.Color(0x050a0a)
         this.alexandriaEnv.show()
+        
+        // Reset Camera Position
         this.cameraRig.target.set(0, 0, 0)
         this.cameraRig.radius = 450
         this.cameraRig.phi = Math.PI / 2.5
+
         gsap.to(this.flash, { opacity: 0, duration: 2.5, delay: 0.8 })
       }
     })
@@ -190,15 +191,24 @@ export class SceneManager {
 
   showFinalBranding() {
     this.brandingShown = true
-    this.narration.hide() 
+    this.narration.hide()
+    
     gsap.to(this.brandContainer, {
-      opacity: 1, duration: 3, ease: "power3.out",
-      onStart: () => { gsap.from(this.brandContainer, { scale: 0.7, duration: 4, ease: "power2.out" }) }
+      opacity: 1, 
+      duration: 3.5, 
+      ease: "power2.out",
+      onStart: () => {
+        gsap.from(this.brandContainer, { scale: 0.95, duration: 4, ease: "power2.out" })
+      }
     })
-    gsap.to(this.scene.background, { r: 0.02, g: 0.08, b: 0.05, duration: 5 })
   }
 
   update() {
+    // 🔴 FIX TYPEERROR: Gunakan alexandriaEnv.group untuk orbit otomatis
+    if (this.isAlexandriaRevealed && this.alexandriaEnv.group) {
+        this.alexandriaEnv.group.rotation.y += 0.0005 
+    }
+
     this.cameraRig.update(); this.world.update()
     this.ambience.update(this.core.group.position); this.core.update()
     this.conclusion.update(); this.uplink.update()
@@ -208,30 +218,23 @@ export class SceneManager {
     }
 
     if (this.journeyStarted && !this.journeyFinished && this.cameraRig.isJourneyComplete()) {
-      this.journeyFinished = true
-      this.advanceNarration() 
-      this.world.next() 
+      this.journeyFinished = true; this.advanceNarration(); this.world.next() 
     }
 
     const seed = this.world.seed
     if (seed && !this.world.cloud && this.observatoryClosed && !this.seedEnteredAlone) {
-      this.seedEnteredAlone = true
-      seed.enterAlone()
+      this.seedEnteredAlone = true; seed.enterAlone()
     }
 
     if (this.seedEnteredAlone && !this.seedHeatingStarted && seed.isAloneComplete()) {
-      this.seedHeatingStarted = true
-      seed.startHeating()
-      this.core.activate()
+      this.seedHeatingStarted = true; seed.startHeating(); this.core.activate()
     }
 
-    if (this.seedHeatingStarted && seed.timer > 4.5 && !this.isForging) {
-      this.isForging = true
-      this.advanceNarration() 
-      seed.morphOut()
+    if (this.seedHeatingStarted && seed.timer > 4.5 && !this.forgingTriggered) {
+      this.forgingTriggered = true; this.isForging = true
+      this.advanceNarration(); seed.morphOut()
       this.core.compress().then(() => {
-        // PENTING: Flag ini sekarang membebaskan guardrail klik manual
-        this.isConcluded = true 
+        this.isConcluded = true; this.isForging = false
         this.conclusion.reveal()
         gsap.to(this.cameraRig, { radius: 130, phi: Math.PI / 2, duration: 3, ease: "expo.inOut" })
       })

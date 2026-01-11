@@ -29,8 +29,21 @@ export class Narration {
     }
   }
 
+  // 🔴 METODE BARU: Menghilangkan narasi sepenuhnya untuk Branding Final
+  hide() {
+    if (!this.isVisible) return
+    gsap.to(this.text, {
+      opacity: 0,
+      filter: 'blur(12px)',
+      duration: 1.5,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        this.isVisible = false
+      }
+    })
+  }
+
   _reveal(html) {
-    // 🔴 PAKSA HTML (bukan textContent)
     this.text.innerHTML = html
 
     gsap.fromTo(
