@@ -90,4 +90,29 @@ this.glow.material.opacity += ((0.25 * pulse) - this.glow.material.opacity) * 0.
 this.light.intensity += ((2.0 * pulse) - this.light.intensity) * 0.03
 
   }
+
+  compress() {
+    return new Promise((resolve) => {
+      // Fase 1: High-Frequency Vibration (Tekanan Internal)
+      gsap.to(this.core.scale, {
+        x: 1.15, y: 1.15, z: 1.15,
+        duration: 0.05,
+        repeat: 20,
+        yoyo: true,
+        onComplete: () => {
+          // Fase 2: Implosion (Menjadi Titik Singularitas)
+          gsap.to(this.group.scale, {
+            x: 0, y: 0, z: 0,
+            duration: 1.2,
+            ease: "expo.in",
+            onComplete: () => {
+              this.active = false;
+              this.group.visible = false;
+              resolve();
+            }
+          });
+        }
+      });
+    });
+  }
 }
