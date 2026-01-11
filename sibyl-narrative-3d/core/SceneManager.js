@@ -12,10 +12,11 @@ const SCRIPT = [
   'Trillions of **interactions** shape our world every second.',
   'Without navigation, **complex systems are fragile**.',
   'The **Sibyl Engine** extracts the logic behind behavior.',
-  'We now **leave the observatory**.',
   'In the **Crucible**, we burn uncertainty through massive simulation.',
   '10,000 agents have perished to find this truth.',
-  'The result is **The Sovereign Logic**.'
+  'The result is **The Sovereign Logic**.',
+  'Feeding the **Immortal Memory**.',
+  'Alexandria **remembers everything**.'
 ]
 
 export class SceneManager {
@@ -33,7 +34,7 @@ export class SceneManager {
     this.narration.show(SCRIPT[this.index])
     this.scene.background = new THREE.Color(0x0b0b0b)
 
-    // State Management
+    // State Control
     this.journeyStarted = false
     this.journeyFinished = false
     this.observatoryClosed = false
@@ -47,15 +48,23 @@ export class SceneManager {
 
   initInputs() {
     window.addEventListener('mousedown', () => {
+      // FIX: Jika sudah di tahap akhir (Kristal muncul), izinkan ganti teks terakhir
+      if (this.isConcluded) {
+        if (this.index < SCRIPT.length - 1) {
+          this.advanceNarration()
+        }
+        return
+      }
+
+      // Guardrail standar untuk fase awal
       if (this.world.isBusy || this.isForging) return
 
-      // Handle Journey Start
+      // Handle Journey Start (Sphere Stage)
       if (this.world.state === 'brain' && !this.journeyStarted) {
         this.startJourney()
         return
       }
 
-      // Default Advance
       this.world.next()
       this.advanceNarration()
     })
@@ -78,15 +87,14 @@ export class SceneManager {
     if (this.observatoryClosed) return
     this.observatoryClosed = true
 
-    // Visual feedback: Cloud collapses and fades
+    // Visual Collapse: Cloud mengecil ke arah pusat
     if (this.world.cloud) {
       gsap.to(this.world.cloud.group.scale, {
-        x: 0.1, y: 0.1, z: 0.1,
-        duration: 2.5,
+        x: 0.05, y: 0.05, z: 0.05,
+        duration: 2.0,
         ease: 'power4.in'
       })
     }
-
     this.ambience.activate()
   }
 
@@ -97,54 +105,52 @@ export class SceneManager {
     this.core.update()
     this.conclusion.update()
 
-    // 1. Trigger: Leaving the Observatory
-    if (SCRIPT[this.index] === 'We now **leave the observatory**.' && !this.observatoryClosed) {
+    // 1. Ignite Crucible (Teks: In the Crucible)
+    if (SCRIPT[this.index].includes('In the **Crucible**') && !this.observatoryClosed) {
       this.closeObservatoryAndIgniteCrucible()
     }
 
-    // 2. Trigger: Journey End -> Move to Crucible Script
+    // 2. Journey End -> Next Stage
     if (this.journeyStarted && !this.journeyFinished && this.cameraRig.isJourneyComplete()) {
       this.journeyFinished = true
-      this.advanceNarration() // Move to "In the Crucible..."
-      this.world.next() // Trigger cloud collapse
+      this.advanceNarration() 
+      this.world.next() 
     }
 
     // 3. Logic: Seed Alone (Setelah cloud benar-benar hilang)
     const seed = this.world.seed
-    // Kita cek nullity karena World.js menghapus cloud saat finished
     if (seed && !this.world.cloud && this.observatoryClosed && !this.seedEnteredAlone) {
       this.seedEnteredAlone = true
       seed.enterAlone()
     }
 
-    // 4. Logic: Heating & Core Emergence
+    // 4. Logic: Core Emergence & Start Heating
     if (this.seedEnteredAlone && !this.seedHeatingStarted && seed.isAloneComplete()) {
       this.seedHeatingStarted = true
       seed.startHeating()
       this.core.activate()
     }
 
-    // 5. THE FORGE: Transisi ke Kesimpulan Final
-    if (this.seedHeatingStarted && seed.timer > 4.0 && !this.isForging) {
+    // 5. THE FORGE: Transisi ke Kristal
+    if (this.seedHeatingStarted && seed.timer > 4.5 && !this.isForging) {
       this.isForging = true
-      this.advanceNarration() // "10,000 agents have perished..."
-      
+      this.advanceNarration() // Tampilkan: "10,000 agents have perished..."
       seed.morphOut()
+      
       this.core.compress().then(() => {
-        this.triggerConclusion()
+        // SETELAH COMPRESS SELESAI: Munculkan Kristal tapi jangan ganti teks otomatis
+        this.triggerConclusionAppearance()
       })
     }
   }
 
-  triggerConclusion() {
-    this.isConcluded = true
-    this.advanceNarration() // "The result is The Sovereign Logic."
+  triggerConclusionAppearance() {
+    this.isConcluded = true // Membuka blokir klik di initInputs
     this.conclusion.reveal()
     
-    // Final Camera Focus: Intimate & Sharp
-    gsap.to(this.cameraRig.target, { x: 0, y: 0, z: 0, duration: 2.5 })
+    // Zoom in fokus pada hasil
     gsap.to(this.cameraRig, { 
-      radius: 120, 
+      radius: 130, 
       phi: Math.PI / 2, 
       duration: 3, 
       ease: "expo.inOut" 
